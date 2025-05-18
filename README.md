@@ -14,7 +14,7 @@ A powerful AI-powered screenshot capture and image analysis tool that integrates
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mcp-screenshot.git
+git clone https://github.com/grahama1970/mcp-screenshot.git
 cd mcp-screenshot
 
 # Install with uv (recommended)
@@ -283,4 +283,4 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/yourusername/mcp-screenshot).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/grahama1970/mcp-screenshot).

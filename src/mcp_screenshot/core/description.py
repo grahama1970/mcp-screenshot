@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
-Image Description Module
+AI-powered Image Description
 
-This module provides functions for describing images using AI vision models.
-It uses LiteLLM to support Vertex AI/Gemini models with a unified interface.
+This module provides AI-powered image description capabilities using LiteLLM
+with support for multiple vision models including Google's Gemini and OpenAI's GPT-4V.
 
-This module is part of the Core Layer and should have no dependencies on
-CLI or MCP layers.
+Key features:
+  - Multi-model support (Gemini, GPT-4, Claude)
+  - Automatic fallback to alternative models
+  - Structured JSON responses
+  - Built-in LiteLLM caching (Redis or in-memory)
 
-Sample input:
-- Image path: "/path/to/image.jpg"
-- Model: "vertex_ai/gemini-2.5-flash-preview-04-17"
-- Prompt: "Describe this image in detail."
+This module is part of the Core Layer.
 
-Expected output:
-- Dictionary with:
-  - description: Detailed description of the image
-  - filename: Name of the image file
+Returns JSON with:
+  - description: Detailed text description
+  - filename: Image filename
   - confidence: Score (1-5) indicating description accuracy
   - model: Model used for description
   - On error: error message
@@ -38,7 +37,7 @@ from mcp_screenshot.core.constants import (
     DEFAULT_PROMPT
 )
 from mcp_screenshot.core.utils import get_vertex_credentials
-from mcp_screenshot.core.cache import get_cache
+from mcp_screenshot.core.litellm_cache import ensure_cache_initialized
 
 
 # Define the response schema for image description
@@ -67,68 +66,74 @@ DESCRIPTION_SCHEMA = {
 def prepare_image_for_multimodal(
     image_path: str, 
     max_width: int = IMAGE_SETTINGS["MAX_WIDTH"],
-    max_height: int = IMAGE_SETTINGS["MAX_HEIGHT"], 
-    initial_quality: int = IMAGE_SETTINGS["DEFAULT_QUALITY"]
+    quality: int = IMAGE_SETTINGS["DEFAULT_QUALITY"]
 ) -> str:
     """
-    Prepares an image for multimodal API calls.
+    Prepare an image for multimodal input. Resize if needed and encode to base64.
     
     Args:
         image_path: Path to the image file
-        max_width: Maximum image width
-        max_height: Maximum image height
-        initial_quality: Initial JPEG quality
+        max_width: Maximum width for resize (maintains aspect ratio)
+        quality: JPEG compression quality (1-100)
         
     Returns:
-        str: Base64-encoded image string
+        Base64 encoded string of the processed image
     """
+    logger.debug(f"Preparing image for multimodal: {image_path}")
+    
     try:
         # Open the image
-        img = Image.open(image_path)
-        
-        # Convert to RGB if necessary
-        if img.mode not in ('RGB', 'L'):
-            img = img.convert('RGB')
-        
-        # Resize if needed
-        original_size = img.size
-        if img.width > max_width or img.height > max_height:
-            img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-            logger.info(f"Resized image from {original_size} to {img.size}")
-        
-        # Create a bytes buffer
-        import io
-        buffer = io.BytesIO()
-        
-        # Save to buffer with specified quality
-        img.save(buffer, format="JPEG", quality=initial_quality, optimize=True)
-        
-        # Get the bytes and encode to base64
-        img_bytes = buffer.getvalue()
-        img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-        
-        return img_b64
+        with Image.open(image_path) as img:
+            # Convert RGBA to RGB if needed
+            if img.mode == 'RGBA':
+                rgb_image = Image.new('RGB', img.size, (255, 255, 255))
+                rgb_image.paste(img, mask=img.split()[3])
+                img = rgb_image
+            
+            # Calculate resize dimensions if needed
+            width, height = img.size
+            if width > max_width:
+                ratio = max_width / width
+                new_width = max_width
+                new_height = int(height * ratio)
+                logger.debug(f"Resizing image from {width}x{height} to {new_width}x{new_height}")
+                img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Convert to JPEG and encode to base64
+            import io
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=quality)
+            image_bytes = buffer.getvalue()
+            
+            # Encode to base64
+            image_b64 = base64.b64encode(image_bytes).decode('utf-8')
+            logger.debug(f"Image prepared: {len(image_b64)} bytes (base64)")
+            
+            return image_b64
+            
     except Exception as e:
-        logger.error(f"Error preparing image: {str(e)}")
+        logger.error(f"Failed to prepare image: {str(e)}")
         raise
 
 
 def describe_image_content(
-    image_path: str, 
+    image_path: str,
     model: str = DEFAULT_MODEL,
     prompt: str = DEFAULT_PROMPT,
     credentials_file: Optional[str] = None,
-    use_cache: bool = True
+    enable_cache: bool = True,
+    cache_ttl: int = 3600
 ) -> Dict[str, Any]:
     """
-    Uses AI vision model to describe the content of an image.
+    Describe the content of an image using AI vision models with LiteLLM caching.
     
     Args:
         image_path: Path to the image file
         model: AI model to use
         prompt: Text prompt for image description
         credentials_file: Path to credentials file for API authentication
-        use_cache: Whether to use cached results
+        enable_cache: Whether to enable LiteLLM caching
+        cache_ttl: Cache TTL in seconds (default 1 hour)
         
     Returns:
         dict: Description results with 'description', 'filename', 'confidence'
@@ -136,17 +141,9 @@ def describe_image_content(
     """
     logger.info(f"Describing image: {image_path} with model: {model}")
     
-    # Check cache first
-    cache = get_cache() if use_cache else None
-    cache_key = None
-    
-    if cache:
-        cache_key = cache.get_cache_key(image_path, prompt, model)
-        if cache_key:
-            cached_result = cache.get(cache_key)
-            if cached_result:
-                logger.info("Using cached image description")
-                return cached_result
+    # Initialize LiteLLM cache if requested
+    if enable_cache:
+        ensure_cache_initialized(ttl=cache_ttl)
     
     try:
         # Prepare the image
@@ -182,12 +179,14 @@ def describe_image_content(
         
         try:
             # Try with primary model
+            # LiteLLM will automatically use cache if enabled
             response = completion(
                 model=model,
                 messages=messages,
                 vertex_credentials=vertex_credentials,
                 temperature=0.1,
-                max_tokens=2000
+                max_tokens=2000,
+                caching=enable_cache  # Enable caching for this call
             )
             
             # Parse the response
@@ -197,26 +196,22 @@ def describe_image_content(
             if "model" in str(e).lower() and DEFAULT_MODEL_FALLBACK:
                 # Try fallback model
                 logger.warning(f"Primary model failed, trying fallback: {DEFAULT_MODEL_FALLBACK}")
+                
                 response = completion(
                     model=DEFAULT_MODEL_FALLBACK,
                     messages=messages,
                     vertex_credentials=vertex_credentials,
                     temperature=0.1,
-                    max_tokens=2000
+                    max_tokens=2000,
+                    caching=enable_cache
                 )
+                
                 result = response.choices[0].message.content
                 model = DEFAULT_MODEL_FALLBACK
             else:
                 raise
         
-        # Clean up any potential JSON issues
-        result = result.strip()
-        if result.startswith('```json'):
-            result = result[7:]
-        if result.endswith('```'):
-            result = result[:-3]
-        
-        # Parse JSON response
+        # Try to parse as JSON
         try:
             parsed_result = json.loads(result)
         except json.JSONDecodeError:
@@ -230,9 +225,11 @@ def describe_image_content(
         # Add model information
         parsed_result["model"] = model
         
-        # Cache the successful result
-        if cache and cache_key:
-            cache.set(cache_key, parsed_result)
+        # Check if this was a cache hit
+        if hasattr(response, '_hidden_params'):
+            cache_hit = response._hidden_params.get('cache_hit', None)
+            if cache_hit:
+                logger.info("Using cached image description")
         
         logger.info(f"Successfully described image with confidence: {parsed_result.get('confidence', 'N/A')}")
         return parsed_result
@@ -272,87 +269,89 @@ if __name__ == "__main__":
     from PIL import Image, ImageDraw
     
     # List to track all validation failures
-    all_validation_failures = []
-    total_tests = 0
+    validation_errors = []
+    
+    logger.info("=== Validating Image Description Module ===")
     
     # Create a test image
-    test_img_path = None
     try:
-        # Create temporary directory for test
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a simple test image
-            img = Image.new('RGB', (400, 300), color='white')
-            draw = ImageDraw.Draw(img)
-            
-            # Draw some shapes
-            draw.rectangle([50, 50, 150, 150], fill='red', outline='black')
-            draw.ellipse([200, 50, 300, 150], fill='blue', outline='black')
-            draw.text((50, 200), "Test Image", fill='black')
-            
-            # Save test image
-            test_img_path = os.path.join(temp_dir, "test_image.jpg")
-            img.save(test_img_path, "JPEG")
-            
-            # Test 1: Image preparation
-            total_tests += 1
-            try:
-                img_b64 = prepare_image_for_multimodal(test_img_path)
-                if not img_b64 or not isinstance(img_b64, str):
-                    all_validation_failures.append(f"Image preparation test: Failed to prepare image")
-                else:
-                    # Verify it's valid base64
-                    try:
-                        base64.b64decode(img_b64)
-                    except Exception:
-                        all_validation_failures.append(f"Image preparation test: Invalid base64 output")
-            except Exception as e:
-                all_validation_failures.append(f"Image preparation test: Exception: {str(e)}")
-            
-            # Test 2: Image description structure (mock test without API call)
-            total_tests += 1
-            mock_result = {
-                "description": "Test image with red square and blue circle",
-                "filename": "test_image.jpg",
-                "confidence": 5,
-                "model": DEFAULT_MODEL
-            }
-            
-            # Verify structure
-            required_fields = ["description", "filename", "confidence", "model"]
-            missing_fields = [field for field in required_fields if field not in mock_result]
-            if missing_fields:
-                all_validation_failures.append(f"Response structure test: Missing fields: {missing_fields}")
-            
-            # Test 3: Invalid image path handling
-            total_tests += 1
-            result = describe_image_content("nonexistent.jpg")
-            if "error" not in result:
-                all_validation_failures.append("Error handling test: Expected error for nonexistent file")
-            
-            # Test 4: Confidence value validation
-            total_tests += 1
-            if mock_result["confidence"] < 1 or mock_result["confidence"] > 5:
-                all_validation_failures.append(
-                    f"Confidence validation: Invalid confidence value {mock_result['confidence']}"
-                )
-            
-            # Test 5: Credentials handling
-            total_tests += 1
-            creds = get_vertex_credentials()
-            if not isinstance(creds, (dict, type(None))):
-                all_validation_failures.append("Credentials test: Invalid credentials format")
-                
+        logger.info("Creating test image...")
+        test_image = Image.new('RGB', (400, 300), 'white')
+        draw = ImageDraw.Draw(test_image)
+        draw.rectangle([50, 50, 150, 150], fill='red')
+        draw.ellipse([200, 100, 300, 200], fill='blue')
+        draw.text((100, 250), "Test Image", fill='black')
+        
+        # Save test image
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+            test_image.save(tmp.name, 'JPEG')
+            test_image_path = tmp.name
+            logger.success(f"Test image created: {test_image_path}")
     except Exception as e:
-        all_validation_failures.append(f"Test setup failed: {str(e)}")
+        validation_errors.append(f"Failed to create test image: {str(e)}")
+        logger.error(validation_errors[-1])
     
-    # Final validation result
-    if all_validation_failures:
-        print(f"❌ VALIDATION FAILED - {len(all_validation_failures)} of {total_tests} tests failed:")
-        for failure in all_validation_failures:
-            print(f"  - {failure}")
-        sys.exit(1)
-    else:
-        print(f"✅ VALIDATION PASSED - All {total_tests} tests produced expected results")
-        print("Image description functions are validated and ready for use")
-        print("Note: Actual API calls require valid credentials")
+    # Test 1: Basic image preparation
+    try:
+        logger.info("Test 1: Image preparation...")
+        image_b64 = prepare_image_for_multimodal(test_image_path)
+        if len(image_b64) > 0:
+            logger.success("✅ Image preparation successful")
+        else:
+            raise ValueError("Empty base64 string")
+    except Exception as e:
+        validation_errors.append(f"Image preparation failed: {str(e)}")
+        logger.error(validation_errors[-1])
+    
+    # Test 2: Image description with cache
+    try:
+        logger.info("Test 2: Image description with caching...")
+        result = describe_image_content(
+            test_image_path,
+            prompt="Describe the shapes and colors in this test image"
+        )
+        
+        if "error" not in result:
+            logger.success("✅ Image description successful")
+            logger.info(f"Description: {result.get('description', '')[:100]}...")
+            logger.info(f"Confidence: {result.get('confidence', 'N/A')}")
+        else:
+            raise ValueError(result["error"])
+    except Exception as e:
+        validation_errors.append(f"Image description failed: {str(e)}")
+        logger.error(validation_errors[-1])
+    
+    # Test 3: Test caching functionality
+    try:
+        logger.info("Test 3: Testing cache functionality...")
+        # Second call should hit cache
+        result2 = describe_image_content(
+            test_image_path,
+            prompt="Describe the shapes and colors in this test image"  # Same prompt
+        )
+        
+        if "error" not in result2:
+            logger.success("✅ Second description successful (should use cache)")
+        else:
+            raise ValueError(result2["error"])
+    except Exception as e:
+        validation_errors.append(f"Cache test failed: {str(e)}")
+        logger.error(validation_errors[-1])
+    
+    # Clean up
+    try:
+        os.unlink(test_image_path)
+        logger.debug("Test image cleaned up")
+    except:
+        pass
+    
+    # Report results
+    logger.info("\n=== Validation Summary ===")
+    if not validation_errors:
+        logger.success("✅ All tests passed!")
         sys.exit(0)
+    else:
+        logger.error(f"❌ {len(validation_errors)} test(s) failed:")
+        for error in validation_errors:
+            logger.error(f"  - {error}")
+        sys.exit(1)

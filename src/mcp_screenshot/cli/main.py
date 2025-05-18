@@ -22,6 +22,7 @@ from mcp_screenshot.core.description import describe_image_content
 from mcp_screenshot.core.d3_verification import verify_d3_visualization
 from mcp_screenshot.core.compare import compare_screenshots
 from mcp_screenshot.core.annotate import annotate_screenshot
+from mcp_screenshot.core.litellm_cache import ensure_cache_initialized
 from mcp_screenshot.cli.formatters import (
     print_screenshot_result,
     print_description_result,
@@ -218,12 +219,23 @@ def describe(
         "--quality", "-q",
         help="Screenshot quality (for URL capture)",
         callback=validate_quality_option
+    ),
+    enable_cache: bool = typer.Option(
+        True,
+        "--cache/--no-cache",
+        help="Enable/disable LiteLLM caching"
+    ),
+    cache_ttl: int = typer.Option(
+        3600,
+        "--cache-ttl",
+        help="Cache TTL in seconds (default 1 hour)"
     )
 ):
     """
     Describe an image using AI vision model.
     
     Can capture from URL or analyze existing file.
+    Supports LiteLLM caching with Redis or in-memory fallback.
     """
     json_output = ctx.obj.get("json_output", False)
     
@@ -254,7 +266,9 @@ def describe(
         result = describe_image_content(
             image_path=image_path,
             prompt=prompt,
-            model=model
+            model=model,
+            enable_cache=enable_cache,
+            cache_ttl=cache_ttl
         )
         
         result["filename"] = os.path.basename(image_path)
@@ -589,6 +603,42 @@ def annotate(
             print_json(error_result)
         else:
             print_error(f"Annotation failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def cache_info(ctx: typer.Context):
+    """Show cache status and configuration."""
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        # Initialize cache and get status
+        is_redis = ensure_cache_initialized()
+        cache_type = "Redis" if is_redis else "In-memory"
+        
+        cache_info = {
+            "cache_type": cache_type,
+            "redis_available": is_redis,
+            "redis_host": os.getenv("REDIS_HOST", "localhost"),
+            "redis_port": os.getenv("REDIS_PORT", "6379"),
+            "cache_enabled": True
+        }
+        
+        if json_output:
+            print_json(cache_info)
+        else:
+            print_info(f"Cache Type: {cache_type}")
+            if is_redis:
+                print_success(f"Redis cache enabled at {cache_info['redis_host']}:{cache_info['redis_port']}")
+            else:
+                print_warning("Using in-memory cache (Redis not available)")
+                
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Cache info failed: {str(e)}")
         raise typer.Exit(code=1)
 
 

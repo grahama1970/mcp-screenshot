@@ -56,10 +56,11 @@ from mcp_screenshot.core.utils import (
     get_vertex_credentials
 )
 
-# Cache functionality
-from mcp_screenshot.core.cache import (
-    ImageDescriptionCache,
-    get_cache
+# LiteLLM Cache functionality
+from mcp_screenshot.core.litellm_cache import (
+    initialize_litellm_cache,
+    ensure_cache_initialized,
+    test_cache_functionality
 )
 
 # Comparison functionality
@@ -99,9 +100,10 @@ __all__ = [
     'format_error_response',
     'get_vertex_credentials',
     
-    # Cache
-    'ImageDescriptionCache',
-    'get_cache',
+    # LiteLLM Cache
+    'initialize_litellm_cache',
+    'ensure_cache_initialized',
+    'test_cache_functionality',
     
     # Comparison
     'compare_screenshots',

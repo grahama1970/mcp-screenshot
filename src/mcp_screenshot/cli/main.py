@@ -20,6 +20,8 @@ from mcp_screenshot.core.constants import IMAGE_SETTINGS, DEFAULT_MODEL
 from mcp_screenshot.core.capture import capture_screenshot, capture_browser_screenshot, get_screen_regions
 from mcp_screenshot.core.description import describe_image_content
 from mcp_screenshot.core.d3_verification import verify_d3_visualization
+from mcp_screenshot.core.compare import compare_screenshots
+from mcp_screenshot.core.annotate import annotate_screenshot
 from mcp_screenshot.cli.formatters import (
     print_screenshot_result,
     print_description_result,
@@ -428,6 +430,165 @@ def regions(
             print_json(error_result)
         else:
             print_error(f"Failed to get regions: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def compare(
+    ctx: typer.Context,
+    image1: str = typer.Argument(
+        ...,
+        help="Path to first image",
+        callback=validate_file_exists
+    ),
+    image2: str = typer.Argument(
+        ...,
+        help="Path to second image", 
+        callback=validate_file_exists
+    ),
+    threshold: float = typer.Option(
+        0.95,
+        "--threshold", "-t",
+        help="Similarity threshold (0.0-1.0)"
+    )
+):
+    """Compare two screenshots and detect differences."""
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        result = compare_screenshots(image1, image2, threshold)
+        
+        if json_output:
+            print_json(result)
+        else:
+            from rich.panel import Panel
+            from rich.table import Table
+            
+            # Create a table for results
+            table = Table(title="Screenshot Comparison Results")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Value", style="green")
+            
+            table.add_row("Similarity", f"{result['similarity']:.2%}")
+            table.add_row("Identical", "Yes" if result['identical'] else "No")
+            table.add_row("Difference", f"{result.get('diff_percentage', 0):.2f}%")
+            table.add_row("Different Pixels", f"{result.get('diff_pixels', 0):,}")
+            table.add_row("Total Pixels", f"{result.get('total_pixels', 0):,}")
+            
+            if 'diff_image' in result:
+                table.add_row("Diff Image", result['diff_image'])
+            
+            console.print(table)
+            
+            if result['identical']:
+                print_success("Images are identical (within threshold)")
+            else:
+                print_warning("Images differ")
+                if 'diff_image' in result:
+                    print_info(f"Difference visualization saved to: {result['diff_image']}")
+                    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Comparison failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def annotate(
+    ctx: typer.Context,
+    image: str = typer.Argument(
+        ...,
+        help="Path to image to annotate",
+        callback=validate_file_exists
+    ),
+    annotations_file: Optional[str] = typer.Option(
+        None,
+        "--file", "-f",
+        help="JSON file containing annotations"
+    ),
+    output: Optional[str] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Output filename (default: adds _annotated suffix)"
+    ),
+    font_size: int = typer.Option(
+        16,
+        "--font-size", "-fs",
+        help="Font size for text labels"
+    )
+):
+    """
+    Annotate a screenshot with rectangles, circles, arrows, and text.
+    
+    Annotations should be provided as a JSON file with an array of annotation objects:
+    [
+        {
+            "type": "rectangle",
+            "coordinates": [100, 100, 300, 200],
+            "text": "Button",
+            "color": "error"
+        },
+        {
+            "type": "arrow",
+            "coordinates": [400, 100, 500, 200],
+            "text": "Click here",
+            "color": "info"
+        }
+    ]
+    
+    Supported types: rectangle, circle, arrow, text
+    Supported colors: highlight, error, success, info
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        # Default annotations for interactive mode
+        if not annotations_file:
+            print_info("No annotations file provided. Using example annotations.")
+            annotations = [
+                {
+                    "type": "rectangle",
+                    "coordinates": [10, 10, 200, 100],
+                    "text": "Example Rectangle",
+                    "color": "highlight"
+                },
+                {
+                    "type": "text",
+                    "coordinates": [10, 150],
+                    "text": "Example Text Annotation",
+                    "color": "info"
+                }
+            ]
+        else:
+            # Load annotations from file
+            with open(annotations_file, 'r') as f:
+                annotations = json.load(f)
+                
+        result = annotate_screenshot(
+            image_path=image,
+            annotations=annotations,
+            output_path=output,
+            font_size=font_size
+        )
+        
+        if json_output:
+            print_json(result)
+        else:
+            if result['success']:
+                print_success(f"Annotated image saved to: {result['annotated_path']}")
+                print_info(f"Applied {result['annotation_count']} annotations")
+            else:
+                print_error(result.get('error', 'Unknown error'))
+                
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Annotation failed: {str(e)}")
         raise typer.Exit(code=1)
 
 

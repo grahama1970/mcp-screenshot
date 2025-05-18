@@ -17,6 +17,7 @@ from loguru import logger
 
 from mcp_screenshot.core.constants import DEFAULT_MODEL, IMAGE_SETTINGS
 from mcp_screenshot.mcp.tools import register_tools
+from mcp_screenshot.mcp.prompts import register_prompts
 
 
 def create_mcp_server(
@@ -42,6 +43,9 @@ def create_mcp_server(
     
     # Register all tools
     register_tools(mcp)
+    
+    # Register all prompts
+    register_prompts(mcp)
     
     logger.info("MCP server created successfully")
     return mcp

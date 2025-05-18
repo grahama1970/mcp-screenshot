@@ -56,6 +56,18 @@ from mcp_screenshot.core.utils import (
     get_vertex_credentials
 )
 
+# Cache functionality
+from mcp_screenshot.core.cache import (
+    ImageDescriptionCache,
+    get_cache
+)
+
+# Comparison functionality
+from mcp_screenshot.core.compare import (
+    compare_screenshots,
+    get_region_similarity
+)
+
 __all__ = [
     # Constants
     'IMAGE_SETTINGS',
@@ -85,5 +97,13 @@ __all__ = [
     'generate_filename',
     'ensure_directory',
     'format_error_response',
-    'get_vertex_credentials'
+    'get_vertex_credentials',
+    
+    # Cache
+    'ImageDescriptionCache',
+    'get_cache',
+    
+    # Comparison
+    'compare_screenshots',
+    'get_region_similarity'
 ]

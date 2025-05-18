@@ -18,6 +18,8 @@ from mcp_screenshot.core.capture import capture_screenshot, capture_browser_scre
 from mcp_screenshot.core.description import describe_image_content
 from mcp_screenshot.core.d3_verification import verify_d3_visualization
 from mcp_screenshot.core.utils import parse_coordinates
+from mcp_screenshot.core.annotate import annotate_screenshot
+from mcp_screenshot.core.compare import compare_screenshots
 
 
 def register_tools(mcp: FastMCP) -> None:
@@ -325,5 +327,86 @@ def register_tools(mcp: FastMCP) -> None:
             "success": True,
             "prompts": D3_PROMPTS
         }
+    
+    @mcp.tool()
+    def annotate_image(
+        image_path: str,
+        annotations: List[Dict[str, Any]],
+        output_path: Optional[str] = None,
+        font_size: int = 16
+    ) -> Dict[str, Any]:
+        """
+        Annotate a screenshot with visual markers and text labels.
+        
+        Args:
+            image_path: Path to the image to annotate
+            annotations: List of annotation objects with:
+                - type: 'rectangle', 'circle', 'arrow', or 'text'
+                - coordinates: [x1,y1,x2,y2] for rectangles, [x,y] for text, etc.
+                - text: Optional text label
+                - color: 'highlight', 'error', 'success', 'info' or RGBA tuple
+                - thickness: Line thickness (default 3)
+            output_path: Optional path to save annotated image
+            font_size: Font size for text labels
+            
+        Returns:
+            dict: Result with path to annotated image
+        """
+        logger.info(f"MCP: annotate_image called for: {image_path}")
+        
+        try:
+            result = annotate_screenshot(
+                image_path=image_path,
+                annotations=annotations,
+                output_path=output_path,
+                font_size=font_size
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"MCP annotate_image error: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    def compare_images(
+        image1_path: str,
+        image2_path: str,
+        threshold: float = 0.95,
+        highlight_color: tuple = (255, 0, 0)
+    ) -> Dict[str, Any]:
+        """
+        Compare two screenshots and detect differences.
+        
+        Args:
+            image1_path: Path to first image
+            image2_path: Path to second image
+            threshold: Similarity threshold (0.0-1.0)
+            highlight_color: RGB color for highlighting differences
+            
+        Returns:
+            dict: Comparison result with similarity score and diff image
+        """
+        logger.info(f"MCP: compare_images called for: {image1_path} vs {image2_path}")
+        
+        try:
+            result = compare_screenshots(
+                image1_path=image1_path,
+                image2_path=image2_path,
+                threshold=threshold,
+                highlight_color=highlight_color
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"MCP compare_images error: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
     
     logger.info("Successfully registered MCP tools")

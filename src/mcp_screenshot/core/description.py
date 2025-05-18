@@ -38,6 +38,7 @@ from mcp_screenshot.core.constants import (
     DEFAULT_PROMPT
 )
 from mcp_screenshot.core.utils import get_vertex_credentials
+from mcp_screenshot.core.cache import get_cache
 
 
 # Define the response schema for image description
@@ -116,7 +117,8 @@ def describe_image_content(
     image_path: str, 
     model: str = DEFAULT_MODEL,
     prompt: str = DEFAULT_PROMPT,
-    credentials_file: Optional[str] = None
+    credentials_file: Optional[str] = None,
+    use_cache: bool = True
 ) -> Dict[str, Any]:
     """
     Uses AI vision model to describe the content of an image.
@@ -126,12 +128,25 @@ def describe_image_content(
         model: AI model to use
         prompt: Text prompt for image description
         credentials_file: Path to credentials file for API authentication
+        use_cache: Whether to use cached results
         
     Returns:
         dict: Description results with 'description', 'filename', 'confidence'
               or 'error' if description fails
     """
     logger.info(f"Describing image: {image_path} with model: {model}")
+    
+    # Check cache first
+    cache = get_cache() if use_cache else None
+    cache_key = None
+    
+    if cache:
+        cache_key = cache.get_cache_key(image_path, prompt, model)
+        if cache_key:
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                logger.info("Using cached image description")
+                return cached_result
     
     try:
         # Prepare the image
@@ -214,6 +229,10 @@ def describe_image_content(
         
         # Add model information
         parsed_result["model"] = model
+        
+        # Cache the successful result
+        if cache and cache_key:
+            cache.set(cache_key, parsed_result)
         
         logger.info(f"Successfully described image with confidence: {parsed_result.get('confidence', 'N/A')}")
         return parsed_result

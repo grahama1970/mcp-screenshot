@@ -6,7 +6,7 @@ with customizable expert modes for verification and insights.
 """
 
 __version__ = "0.1.0"
-__author__ = "Graham"
+__author__ = "Graham Anderson"
 
 from mcp_screenshot.core import (
     capture_screenshot,

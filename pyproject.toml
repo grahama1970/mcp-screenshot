@@ -2,7 +2,7 @@
 name = "mcp-screenshot"
 version = "0.1.0"
 description = "MCP Screenshot tool for AI-powered image analysis and verification"
-authors = [{name = "Graham", email = "graham@example.com"}]
+authors = [{name = "Graham Anderson", email = "graham@grahama.co"}]
 dependencies = [
     "fastmcp>=0.1.0",
     "mss>=9.0.1",

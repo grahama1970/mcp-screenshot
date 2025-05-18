@@ -276,7 +276,7 @@ def describe(
         if json_output:
             print_json(result)
         else:
-            print_description_result(result, image_path)
+            print_description_result(result)
             
     except Exception as e:
         error_result = {"error": str(e)}
@@ -690,12 +690,13 @@ def zoom(
     try:
         # Parse center coordinates
         try:
-            coords = parse_coordinates(center.strip())
-            if len(coords) >= 2:
-                zoom_center_tuple = (coords[0], coords[1])
-            else:
-                raise typer.BadParameter("Center must be 'x,y' format")
-        except ValueError:
+            parts = center.strip().split(",")
+            if len(parts) != 2:
+                raise ValueError("Expected 2 coordinates")
+            x = int(parts[0].strip())
+            y = int(parts[1].strip())
+            zoom_center_tuple = (x, y)
+        except (ValueError, IndexError):
             raise typer.BadParameter("Invalid center format. Use 'x,y'")
         
         # Capture with zoom

@@ -33,7 +33,9 @@ def register_tools(mcp: FastMCP) -> None:
     def capture_screen(
         quality: int = IMAGE_SETTINGS["DEFAULT_QUALITY"],
         region: Optional[Union[List[int], str]] = None,
-        include_raw: bool = False
+        include_raw: bool = False,
+        zoom_center: Optional[List[int]] = None,
+        zoom_factor: float = 1.0
     ) -> Dict[str, Any]:
         """
         Capture a screenshot of the screen or a specific region.
@@ -42,17 +44,26 @@ def register_tools(mcp: FastMCP) -> None:
             quality: JPEG compression quality (1-100)
             region: Screen region to capture - preset name or [x,y,width,height]
             include_raw: Whether to also save raw PNG
+            zoom_center: Center point [x, y] for zoom operation
+            zoom_factor: Zoom multiplication factor (e.g., 2.0 for 2x zoom)
             
         Returns:
             dict: Capture result with file path and base64 image data
         """
-        logger.info(f"MCP: capture_screen called with quality={quality}, region={region}")
+        logger.info(f"MCP: capture_screen called with quality={quality}, region={region}, zoom_center={zoom_center}, zoom_factor={zoom_factor}")
         
         try:
+            # Convert zoom_center to tuple if provided
+            zoom_center_tuple = None
+            if zoom_center and len(zoom_center) >= 2:
+                zoom_center_tuple = (zoom_center[0], zoom_center[1])
+            
             result = capture_screenshot(
                 quality=quality,
                 region=region,
-                include_raw=include_raw
+                include_raw=include_raw,
+                zoom_center=zoom_center_tuple,
+                zoom_factor=zoom_factor
             )
             
             # Remove base64 data for MCP response (too large)

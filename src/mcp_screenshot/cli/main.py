@@ -28,14 +28,17 @@ from mcp_screenshot.cli.formatters import (
     print_error,
     print_info,
     print_success,
+    print_warning,
     print_json
 )
 from mcp_screenshot.cli.validators import (
     validate_quality_option,
     validate_region_option,
     validate_file_exists,
-    validate_url
+    validate_url,
+    validate_zoom_factor
 )
+from mcp_screenshot.core.utils import parse_coordinates
 
 # Initialize Typer app
 app = typer.Typer(
@@ -115,22 +118,48 @@ def capture(
         3,
         "--wait", "-w",
         help="Seconds to wait before browser capture"
+    ),
+    zoom_center: Optional[str] = typer.Option(
+        None,
+        "--zoom-center", "-z",
+        help="Center point for zoom as 'x,y' coordinates"
+    ),
+    zoom_factor: float = typer.Option(
+        1.0,
+        "--zoom-factor", "-zf",
+        help="Zoom multiplication factor (e.g., 2.0 for 2x zoom)",
+        callback=validate_zoom_factor
     )
 ):
     """
     Capture a screenshot of the screen or a specific region.
     
     Can capture entire screen, specific regions, or web pages via URL.
+    Supports zooming in on a specific point with a zoom factor.
     """
     json_output = ctx.obj.get("json_output", False)
     
     try:
+        # Parse zoom center if provided
+        zoom_center_tuple = None
+        if zoom_center:
+            try:
+                parts = zoom_center.split(",")
+                if len(parts) != 2:
+                    raise ValueError("Expected 2 coordinates")
+                x = int(parts[0].strip())
+                y = int(parts[1].strip())
+                zoom_center_tuple = (x, y)
+            except (ValueError, IndexError):
+                raise typer.BadParameter("Invalid zoom center format. Use 'x,y' (e.g., '640,480')")
+        
         if url:
-            # Browser capture
+            # Browser capture (zoom not supported for URL captures)
+            if zoom_center_tuple or zoom_factor > 1.0:
+                print_warning("Zoom is not supported for URL captures")
             result = capture_browser_screenshot(
                 url=url,
                 output_dir=output_dir,
-                output_filename=output,
                 wait_time=wait_time,
                 quality=quality
             )
@@ -140,7 +169,8 @@ def capture(
                 quality=quality,
                 region=region,
                 output_dir=output_dir,
-                output_filename=output
+                zoom_center=zoom_center_tuple,
+                zoom_factor=zoom_factor
             )
         
         if json_output:
@@ -406,6 +436,78 @@ def version():
     """Show version information."""
     from mcp_screenshot import __version__
     print_info(f"mcp-screenshot version {__version__}")
+
+
+@app.command()
+def zoom(
+    ctx: typer.Context,
+    center: str = typer.Argument(
+        ...,
+        help="Center point for zoom as 'x,y' coordinates"
+    ),
+    zoom_factor: float = typer.Argument(
+        2.0,
+        help="Zoom multiplication factor (default: 2.0)",
+        callback=validate_zoom_factor
+    ),
+    quality: int = typer.Option(
+        IMAGE_SETTINGS["DEFAULT_QUALITY"],
+        "--quality", "-q",
+        help="Image quality (30-90)",
+        callback=validate_quality_option
+    ),
+    output_dir: str = typer.Option(
+        "./",
+        "--output-dir", "-d",
+        help="Output directory"
+    ),
+    region: Optional[str] = typer.Option(
+        None,
+        "--region", "-r",
+        help="Limit zoom to a specific screen region",
+        callback=validate_region_option
+    )
+):
+    """
+    Capture a zoomed screenshot centered on specific coordinates.
+    
+    This is a convenience command for quickly zooming in on a point of interest.
+    Example: mcp-screenshot zoom 100,200 3.0
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        # Parse center coordinates
+        try:
+            coords = parse_coordinates(center.strip())
+            if len(coords) >= 2:
+                zoom_center_tuple = (coords[0], coords[1])
+            else:
+                raise typer.BadParameter("Center must be 'x,y' format")
+        except ValueError:
+            raise typer.BadParameter("Invalid center format. Use 'x,y'")
+        
+        # Capture with zoom
+        result = capture_screenshot(
+            quality=quality,
+            region=region,
+            output_dir=output_dir,
+            zoom_center=zoom_center_tuple,
+            zoom_factor=zoom_factor
+        )
+        
+        if json_output:
+            print_json(result)
+        else:
+            print_screenshot_result(result)
+            
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Zoom capture failed: {str(e)}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

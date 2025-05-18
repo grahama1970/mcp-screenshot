@@ -239,6 +239,36 @@ def validate_output_dir(ctx: typer.Context, value: Optional[str]) -> Optional[st
     return value
 
 
+def validate_zoom_factor(ctx: typer.Context, value: float) -> float:
+    """
+    Validate zoom factor is within reasonable bounds.
+    
+    Args:
+        ctx: Typer context
+        value: Zoom factor to validate
+        
+    Returns:
+        float: Validated zoom factor
+        
+    Raises:
+        typer.BadParameter: If zoom factor is invalid
+    """
+    MIN_ZOOM = 1.0
+    MAX_ZOOM = 10.0
+    
+    if value < MIN_ZOOM:
+        raise typer.BadParameter(
+            f"Zoom factor must be at least {MIN_ZOOM}, got {value}"
+        )
+    
+    if value > MAX_ZOOM:
+        raise typer.BadParameter(
+            f"Zoom factor must be at most {MAX_ZOOM}, got {value}"
+        )
+    
+    return value
+
+
 if __name__ == "__main__":
     """Test validators with sample inputs"""
     import sys

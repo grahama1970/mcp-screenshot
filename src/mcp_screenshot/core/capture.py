@@ -53,7 +53,9 @@ def capture_screenshot(
     quality: int = IMAGE_SETTINGS["DEFAULT_QUALITY"],
     region: Optional[Union[List[int], str]] = None,
     output_dir: str = "screenshots",
-    include_raw: bool = False
+    include_raw: bool = False,
+    zoom_center: Optional[Tuple[int, int]] = None,
+    zoom_factor: float = 1.0
 ) -> Dict[str, Any]:
     """
     Captures a screenshot of the entire desktop or a specified region.
@@ -63,6 +65,8 @@ def capture_screenshot(
         region: Region coordinates [x, y, width, height] or preset name
         output_dir: Directory to save screenshot
         include_raw: Whether to also save the raw uncompressed PNG
+        zoom_center: Center point (x, y) for zoom operation
+        zoom_factor: Zoom multiplication factor (e.g., 2.0 for 2x zoom)
         
     Returns:
         dict: Response containing:
@@ -113,6 +117,11 @@ def capture_screenshot(
             # Convert to PIL Image
             img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
             
+            # Apply zoom if requested
+            if zoom_center and zoom_factor > 1.0:
+                img = _apply_zoom(img, zoom_center, zoom_factor)
+                logger.info(f"Applied zoom: center={zoom_center}, factor={zoom_factor}")
+            
             # Save raw PNG if requested
             if include_raw and raw_path:
                 logger.info(f"Saving raw PNG to {raw_path}")
@@ -146,6 +155,11 @@ def capture_screenshot(
                 "original_dimensions": {"width": original_size[0], "height": original_size[1]},
                 "quality": quality
             }
+            
+            if zoom_center and zoom_factor > 1.0:
+                response["zoom_applied"] = True
+                response["zoom_center"] = zoom_center
+                response["zoom_factor"] = zoom_factor
             
             if include_raw and raw_path:
                 response["raw_file"] = raw_path
@@ -345,6 +359,65 @@ def get_screen_regions() -> Dict[str, Dict[str, int]]:
     return regions
 
 
+def _apply_zoom(img: Image.Image, center: Tuple[int, int], zoom_factor: float) -> Image.Image:
+    """
+    Apply zoom to an image around a center point.
+    
+    Args:
+        img: PIL Image object
+        center: Center point (x, y) for zoom
+        zoom_factor: Zoom multiplication factor
+        
+    Returns:
+        PIL Image object with zoom applied
+    """
+    # Validate center point is within image bounds
+    x, y = center
+    img_width, img_height = img.size
+    x = max(0, min(x, img_width - 1))
+    y = max(0, min(y, img_height - 1))
+    
+    # Calculate crop box dimensions
+    crop_width = int(img_width / zoom_factor)
+    crop_height = int(img_height / zoom_factor)
+    
+    # Ensure minimum crop size
+    crop_width = max(1, crop_width)
+    crop_height = max(1, crop_height)
+    
+    # Calculate crop box boundaries
+    left = int(x - crop_width / 2)
+    top = int(y - crop_height / 2)
+    right = left + crop_width
+    bottom = top + crop_height
+    
+    # Adjust boundaries to stay within image bounds
+    if left < 0:
+        right -= left
+        left = 0
+    if top < 0:
+        bottom -= top
+        top = 0
+    if right > img_width:
+        left -= (right - img_width)
+        right = img_width
+    if bottom > img_height:
+        top -= (bottom - img_height)
+        bottom = img_height
+    
+    # Final boundary check
+    left = max(0, left)
+    top = max(0, top)
+    right = min(img_width, right)
+    bottom = min(img_height, bottom)
+    
+    # Crop the image
+    cropped = img.crop((left, top, right, bottom))
+    
+    # Resize back to original dimensions
+    return cropped.resize((img_width, img_height), Image.Resampling.LANCZOS)
+
+
 def _get_preset_region(preset: str, monitor: Dict[str, int]) -> Dict[str, int]:
     """Get region coordinates for a preset name."""
     width = monitor["width"]
@@ -421,7 +494,23 @@ if __name__ == "__main__":
         if not regions or "full" not in regions:
             all_validation_failures.append(f"Get screen regions test: Failed to get regions")
         
-        # Test 6: Browser screenshot (if available)
+        # Test 6: Zoom capture
+        total_tests += 1
+        result = capture_screenshot(
+            quality=50,
+            output_dir=test_dir,
+            zoom_center=(500, 300),
+            zoom_factor=2.0
+        )
+        
+        if "error" in result:
+            all_validation_failures.append(f"Zoom capture test: {result['error']}")
+        elif "file" not in result or not os.path.exists(result["file"]):
+            all_validation_failures.append(f"Zoom capture test: File not created")
+        elif not result.get("zoom_applied", False):
+            all_validation_failures.append(f"Zoom capture test: Zoom not applied")
+        
+        # Test 7: Browser screenshot (if available)
         if SELENIUM_AVAILABLE:
             total_tests += 1
             result = capture_browser_screenshot(

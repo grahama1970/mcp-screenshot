@@ -38,6 +38,9 @@ def print_screenshot_result(result: Dict[str, Any]) -> None:
     if "quality" in result:
         content.append(f"[cyan]Quality:[/cyan] {result['quality']}")
     
+    if "zoom_applied" in result and result["zoom_applied"]:
+        content.append(f"[cyan]Zoom Applied:[/cyan] {result.get('zoom_factor', 'Unknown')}x at ({result.get('zoom_center', ['?','?'])[0]}, {result.get('zoom_center', ['?','?'])[1]})")
+    
     if "raw_file" in result:
         content.append(f"[green]Raw PNG saved to:[/green] {result['raw_file']}")
     

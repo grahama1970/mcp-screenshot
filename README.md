@@ -74,6 +74,8 @@ Capture screenshots of screen regions or web pages.
 | `--output` | `-o` | Output filename | timestamped | `--output screen.jpg` |
 | `--output-dir` | `-d` | Output directory | ./ | `--output-dir ./screenshots` |
 | `--wait` | `-w` | Wait seconds (for URLs) | 3 | `--wait 5` |
+| `--zoom-center` | `-z` | Center point for zoom (x,y) | None | `--zoom-center 640,480` |
+| `--zoom-factor` | `-zf` | Zoom factor (1.0-10.0) | 1.0 | `--zoom-factor 2.0` |
 
 **Available regions**: full, left-half, right-half, top-half, bottom-half, center
 
@@ -83,6 +85,11 @@ mcp-screenshot capture                           # Full screen
 mcp-screenshot capture --region left-half        # Left half of screen
 mcp-screenshot capture --url https://d3js.org    # Web page
 mcp-screenshot capture --output shot.jpg --quality 85
+
+# Zoom examples
+mcp-screenshot capture --zoom-center 800,600 --zoom-factor 2.0
+mcp-screenshot capture --zoom-center 400,300 --zoom-factor 4.0 --output zoomed.jpg
+mcp-screenshot capture --region center --zoom-center 640,360 --zoom-factor 1.5
 ```
 
 ### describe - AI Image Description
@@ -173,11 +180,36 @@ Configure in your MCP client (e.g., Claude Code):
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `capture_screenshot` | Capture a screenshot | quality, region, output_dir |
+| `capture_screenshot` | Capture a screenshot | quality, region, output_dir, zoom_center, zoom_factor |
 | `describe_image` | Describe an image with AI | file_path, prompt, model |
 | `verify_visualization` | Verify with expert mode | file_path, expert_mode, features |
 
 ## Advanced Usage
+
+### Zoom Feature
+
+The capture command supports zooming in on specific coordinates:
+
+- **`--zoom-center x,y`**: Specify the center point for zoom (e.g., 640,480)
+- **`--zoom-factor`**: Set the zoom multiplication factor (1.0 to 10.0)
+
+Zoom works by:
+1. Capturing the full screenshot
+2. Cropping around the specified center point
+3. Enlarging the cropped area by the zoom factor
+
+```bash
+# Zoom 2x into the center of the screen
+mcp-screenshot capture --zoom-center 640,360 --zoom-factor 2.0
+
+# Zoom 3x into a specific UI element
+mcp-screenshot capture --zoom-center 1200,400 --zoom-factor 3.0 --output ui_detail.jpg
+
+# Combine with regions for more control
+mcp-screenshot capture --region center --zoom-center 640,360 --zoom-factor 1.5
+```
+
+**Note**: Zoom is only available for screen captures, not URL captures.
 
 ### JSON Output for Scripting
 

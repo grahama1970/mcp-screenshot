@@ -11,7 +11,7 @@ import tempfile
 from PIL import Image, ImageDraw
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from mcp_screenshot.core.capture import capture_screenshot, get_screen_regions
 from mcp_screenshot.core.description import describe_image_content, prepare_image_for_multimodal

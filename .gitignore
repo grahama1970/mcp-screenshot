@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# UV
+.venv/
+.python-version
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Documentation
+docs/_build/
+docs/.doctrees/
+
+# Logs
+logs/
+*.log
+
+# Screenshots
+screenshots/
+test_screenshots/
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+# Configuration
+.env
+*.env
+vertex_ai_service_account.json
+credentials.json
+
+# Temporary files
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
+temp/
+
+# Other
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/

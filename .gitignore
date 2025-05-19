@@ -67,6 +67,7 @@ logs/
 # Screenshots
 screenshots/
 test_screenshots/
+captures/
 *.jpg
 *.jpeg
 *.png

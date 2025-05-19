@@ -20,6 +20,7 @@ from mcp_screenshot.core.d3_verification import verify_d3_visualization
 from mcp_screenshot.core.utils import parse_coordinates
 from mcp_screenshot.core.annotate import annotate_screenshot
 from mcp_screenshot.core.compare import compare_screenshots
+from mcp_screenshot.core.batch import batch_capture, batch_describe, BatchProcessor
 
 
 def register_tools(mcp: FastMCP) -> None:
@@ -404,6 +405,152 @@ def register_tools(mcp: FastMCP) -> None:
             
         except Exception as e:
             logger.error(f"MCP compare_images error: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    async def batch_capture_screenshots(
+        targets: List[Dict[str, Any]],
+        max_concurrent: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Batch capture multiple screenshots concurrently.
+        
+        Args:
+            targets: List of capture targets, each can contain:
+                - url: URL to capture with browser
+                - region: Screen region to capture
+                - quality: JPEG quality (1-100)
+                - zoom_center: [x, y] coordinates for zoom
+                - zoom_factor: Zoom multiplication factor
+                - id: Custom identifier for the capture
+            max_concurrent: Maximum concurrent operations
+            
+        Returns:
+            dict: Batch results with:
+                - results: List of capture results
+                - total: Total number of captures
+                - successful: Number of successful captures
+                - failed: Number of failed captures
+        """
+        logger.info(f"MCP: batch_capture_screenshots called with {len(targets)} targets")
+        
+        try:
+            results = await batch_capture(targets, max_concurrent=max_concurrent)
+            
+            successful = sum(1 for r in results if r.get("success", False))
+            failed = len(results) - successful
+            
+            return {
+                "success": True,
+                "results": results,
+                "total": len(results),
+                "successful": successful,
+                "failed": failed
+            }
+            
+        except Exception as e:
+            logger.error(f"MCP batch_capture_screenshots error: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    async def batch_describe_images(
+        images: List[Union[str, Dict[str, Any]]],
+        prompt: Optional[str] = None,
+        model: str = DEFAULT_MODEL,
+        max_concurrent: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Batch describe multiple images using AI.
+        
+        Args:
+            images: List of image paths or dicts with path and custom prompt
+            prompt: Default prompt for all images
+            model: AI model to use
+            max_concurrent: Maximum concurrent operations
+            
+        Returns:
+            dict: Batch results with:
+                - results: List of description results
+                - total: Total number of descriptions
+                - successful: Number of successful descriptions
+                - failed: Number of failed descriptions
+        """
+        logger.info(f"MCP: batch_describe_images called with {len(images)} images")
+        
+        try:
+            results = await batch_describe(
+                images, 
+                prompt=prompt,
+                model=model,
+                max_concurrent=max_concurrent
+            )
+            
+            successful = sum(1 for r in results if r.get("success", False))
+            failed = len(results) - successful
+            
+            return {
+                "success": True,
+                "results": results,
+                "total": len(results),
+                "successful": successful,
+                "failed": failed
+            }
+            
+        except Exception as e:
+            logger.error(f"MCP batch_describe_images error: {str(e)}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    @mcp.tool()
+    async def batch_capture_and_describe(
+        targets: List[Dict[str, Any]],
+        prompt: Optional[str] = None,
+        model: str = DEFAULT_MODEL,
+        max_concurrent: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Capture screenshots and describe them in one batch operation.
+        
+        Args:
+            targets: List of capture targets with optional prompts
+            prompt: Default description prompt
+            model: AI model to use
+            max_concurrent: Maximum concurrent operations
+            
+        Returns:
+            dict: Combined capture and description results
+        """
+        logger.info(f"MCP: batch_capture_and_describe called with {len(targets)} targets")
+        
+        try:
+            processor = BatchProcessor(max_concurrent=max_concurrent)
+            results = await processor.process_capture_and_describe(
+                targets,
+                prompt=prompt,
+                model=model
+            )
+            
+            successful = sum(1 for r in results if r.get("success", False))
+            failed = len(results) - successful
+            
+            return {
+                "success": True,
+                "results": results,
+                "total": len(results),
+                "successful": successful,
+                "failed": failed
+            }
+            
+        except Exception as e:
+            logger.error(f"MCP batch_capture_and_describe error: {str(e)}", exc_info=True)
             return {
                 "success": False,
                 "error": str(e)

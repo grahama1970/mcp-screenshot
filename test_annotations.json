@@ -1,0 +1,20 @@
+[
+    {
+        "type": "rectangle",
+        "coordinates": [50, 50, 150, 150],
+        "text": "Red Square",
+        "color": "error"
+    },
+    {
+        "type": "circle",
+        "coordinates": [250, 150, 50],
+        "text": "Blue Circle",
+        "color": "info"
+    },
+    {
+        "type": "arrow",
+        "coordinates": [100, 200, 200, 250],
+        "text": "Arrow",
+        "color": "success"
+    }
+]

@@ -24,8 +24,8 @@ DEFAULT_MODEL_FALLBACK = os.getenv("DEFAULT_MODEL_FALLBACK", "vertex_ai/gemini-2
 
 # Image settings for capture and processing
 IMAGE_SETTINGS: Dict[str, Any] = {
-    "MAX_WIDTH": int(os.getenv("MAX_WIDTH", "1280")),
-    "MAX_HEIGHT": int(os.getenv("MAX_HEIGHT", "1024")),
+    "MAX_WIDTH": int(os.getenv("MAX_WIDTH", "1920")),
+    "MAX_HEIGHT": int(os.getenv("MAX_HEIGHT", "10240")),  # 10x taller for full-page captures
     "MIN_QUALITY": int(os.getenv("MIN_QUALITY", "30")),
     "MAX_QUALITY": int(os.getenv("MAX_QUALITY", "90")),
     "DEFAULT_QUALITY": int(os.getenv("DEFAULT_QUALITY", "70")),

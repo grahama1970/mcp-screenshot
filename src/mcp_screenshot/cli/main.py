@@ -26,6 +26,7 @@ from mcp_screenshot.core.compare import compare_screenshots
 from mcp_screenshot.core.annotate import annotate_screenshot
 from mcp_screenshot.core.litellm_cache import ensure_cache_initialized
 from mcp_screenshot.core.batch import batch_capture, batch_describe, BatchProcessor
+from mcp_screenshot.core.history import get_history
 from mcp_screenshot.cli.formatters import (
     print_screenshot_result,
     print_description_result,
@@ -242,6 +243,19 @@ def capture(
                 zoom_factor=zoom_factor
             )
         
+        # Save to history if successful
+        if not result.get("error"):
+            try:
+                history = get_history()
+                history.add_screenshot(
+                    file_path=result["file"],
+                    url=url,
+                    region=region,
+                    metadata={"source": "capture_command"}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save to history: {str(e)}")
+        
         if json_output:
             print_json(result)
         else:
@@ -371,6 +385,21 @@ def describe(
         )
         
         result["filename"] = os.path.basename(image_path)
+        
+        # Save description to history
+        if not result.get("error"):
+            try:
+                history = get_history()
+                history.add_screenshot(
+                    file_path=image_path,
+                    description=result.get("description"),
+                    extracted_text=result.get("description"),  # Use description as extracted text
+                    url=url,
+                    region=region,
+                    metadata={"source": "describe_command", "prompt": prompt}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save to history: {str(e)}")
         
         if json_output:
             print_json(result)
@@ -1087,6 +1116,27 @@ def schema(
     }
     
     try:
+        schemas["combined"] = {
+            "parameters": {
+                "text": "Text to search for (optional if --image is provided)",
+                "image": "Reference image path (optional if --text is provided)",
+                "text_weight": "Weight for text search (any positive number, default: 1.0)",
+                "image_weight": "Weight for image similarity (any positive number, default: 1.0)",
+                "limit": "Maximum results (default: 10)",
+                "region": "Filter by screen region"
+            },
+            "notes": "At least one of --text or --image must be provided. Weights are automatically normalized."
+        }
+        
+        schemas["similar"] = {
+            "parameters": {
+                "image": "Reference image path (required)",
+                "threshold": "Similarity threshold 0.0-1.0 (default: 0.8)",
+                "limit": "Maximum results (default: 10)",
+                "region": "Filter by screen region"
+            }
+        }
+        
         if command not in schemas:
             available = ", ".join(schemas.keys())
             raise typer.BadParameter(f"Unknown command. Available: {available}")
@@ -1126,6 +1176,12 @@ def quick_ref(ctx: typer.Context):
             "describe_region": "mcp-screenshot --json describe --region right_half",
             "describe_ui": "mcp-screenshot --json describe --file ui.jpg --prompt 'List all UI elements'",
             "compare_images": "mcp-screenshot --json compare before.jpg after.jpg",
+            "view_history": "mcp-screenshot --json history",
+            "search_text": "mcp-screenshot --json search 'error message'",
+            "search_similar": "mcp-screenshot --json similar image.jpg",
+            "search_combined": "mcp-screenshot --json combined --text 'login form' --image image.jpg --text-weight 7 --image-weight 3",
+            "search_text_only": "mcp-screenshot --json combined --text 'error message'",
+            "search_image_only": "mcp-screenshot --json combined --image reference.jpg",
             "batch_process": "mcp-screenshot --json batch config.json --operation both"
         },
         "key_patterns": {
@@ -1137,7 +1193,10 @@ def quick_ref(ctx: typer.Context):
         "json_responses": {
             "capture": {"file": "path/to/image.jpg", "region": "full", "dimensions": [1920, 1080]},
             "describe": {"description": "text", "confidence": 5, "model": "gemini"},
-            "compare": {"similarity": 0.95, "identical": True, "diff_image": "path/to/diff.jpg"}
+            "compare": {"similarity": 0.95, "identical": True, "diff_image": "path/to/diff.jpg"},
+            "search": {"query": "text", "results": [{"id": 1, "storage_path": "path", "rank": 0.85}]},
+            "similar": {"query_image": "image.jpg", "results": [{"id": 1, "similarity": 0.92}]},
+            "combined": {"results": [{"id": 1, "text_score": 0.8, "image_score": 0.9, "combined_score": 0.85}]}
         },
         "tips": [
             "Always use --json for machine-readable output",
@@ -1352,6 +1411,19 @@ def zoom(
             zoom_factor=zoom_factor
         )
         
+        # Save to history if successful
+        if not result.get("error"):
+            try:
+                history = get_history()
+                history.add_screenshot(
+                    file_path=result["file"],
+                    url=url,
+                    region=region,
+                    metadata={"source": "capture_command"}
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save to history: {str(e)}")
+        
         if json_output:
             print_json(result)
         else:
@@ -1364,6 +1436,576 @@ def zoom(
         else:
             print_error(f"Zoom capture failed: {str(e)}")
         raise typer.Exit(code=1)
+
+
+@app.command()
+def history(
+    ctx: typer.Context,
+    limit: int = typer.Option(
+        10,
+        "--limit", "-l",
+        help="Number of recent screenshots to show"
+    ),
+    region: Optional[str] = typer.Option(
+        None,
+        "--region", "-r",
+        help="Filter by screen region"
+    )
+):
+    """
+    Show screenshot history.
+    
+    Lists recent screenshots with metadata and descriptions.
+    
+    EXAMPLES:
+      mcp-screenshot history                    # Show last 10 screenshots
+      mcp-screenshot history --limit 20         # Show last 20 screenshots
+      mcp-screenshot history --region left_half # Show captures of left half
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        history = get_history()
+        screenshots = history.get_recent(limit=limit, region=region)
+        
+        if json_output:
+            print_json({
+                "screenshots": [
+                    {
+                        "id": s["id"],
+                        "filename": s["filename"],
+                        "storage_path": s["storage_path"],
+                        "url": s["url"],
+                        "region": s["region"],
+                        "timestamp": s["timestamp"].isoformat(),
+                        "dimensions": f"{s['width']}x{s['height']}",
+                        "size_bytes": s["size_bytes"],
+                        "description": s.get("description", ""),
+                        "extracted_text": s.get("extracted_text", "")[:100] + "..." if s.get("extracted_text") else ""
+                    }
+                    for s in screenshots
+                ]
+            })
+        else:
+            from rich.table import Table
+            
+            table = Table(title=f"Screenshot History (Last {limit})")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Filename", style="magenta")
+            table.add_column("Time", style="green")
+            table.add_column("Source", style="yellow")
+            table.add_column("Size", style="blue")
+            table.add_column("Description", style="white")
+            
+            for s in screenshots:
+                time_str = s["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+                source = s["url"] or s["region"] or "screen"
+                size_str = f"{s['width']}x{s['height']}"
+                desc = s.get("description", "")[:50] + "..." if s.get("description") else ""
+                
+                table.add_row(
+                    str(s["id"]),
+                    s["filename"],
+                    time_str,
+                    source,
+                    size_str,
+                    desc
+                )
+            
+            console.print(table)
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"History retrieval failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def search(
+    ctx: typer.Context,
+    query: str = typer.Argument(
+        ...,
+        help="Search query for screenshot content"
+    ),
+    limit: int = typer.Option(
+        10,
+        "--limit", "-l",
+        help="Maximum number of results"
+    ),
+    region: Optional[str] = typer.Option(
+        None,
+        "--region", "-r",
+        help="Filter by screen region"
+    ),
+    date_from: Optional[str] = typer.Option(
+        None,
+        "--from",
+        help="Filter from date (YYYY-MM-DD)"
+    ),
+    date_to: Optional[str] = typer.Option(
+        None,
+        "--to",
+        help="Filter to date (YYYY-MM-DD)"
+    )
+):
+    """
+    Search screenshot history.
+    
+    Uses BM25 full-text search to find screenshots by content,
+    descriptions, or extracted text.
+    
+    EXAMPLES:
+      mcp-screenshot search "error message"
+      mcp-screenshot search "login form" --limit 5
+      mcp-screenshot search "dashboard" --from 2024-01-01
+      mcp-screenshot search "button" --region right_half
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        history = get_history()
+        
+        # Parse dates if provided
+        from datetime import datetime
+        date_from_dt = datetime.strptime(date_from, "%Y-%m-%d") if date_from else None
+        date_to_dt = datetime.strptime(date_to, "%Y-%m-%d") if date_to else None
+        
+        # Perform search
+        results = history.search(
+            query=query,
+            limit=limit,
+            date_from=date_from_dt,
+            date_to=date_to_dt,
+            region=region
+        )
+        
+        if json_output:
+            print_json({
+                "query": query,
+                "results": [
+                    {
+                        "id": r["id"],
+                        "filename": r["filename"],
+                        "storage_path": r["storage_path"],
+                        "url": r["url"],
+                        "region": r["region"],
+                        "timestamp": r["timestamp"].isoformat(),
+                        "rank": r["rank"],
+                        "description": r.get("description", ""),
+                        "extracted_text": r.get("extracted_text", "")[:100] + "..." if r.get("extracted_text") else ""
+                    }
+                    for r in results
+                ]
+            })
+        else:
+            from rich.table import Table
+            from rich.text import Text
+            
+            table = Table(title=f"Search Results for '{query}'")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Filename", style="magenta")
+            table.add_column("Time", style="green")
+            table.add_column("Score", style="red")
+            table.add_column("Match", style="yellow")
+            
+            for r in results:
+                time_str = r["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+                score_str = f"{r['rank']:.2f}"
+                
+                # Show relevant text snippet
+                desc = r.get("description", "")
+                text = r.get("extracted_text", "")
+                
+                # Find the matching snippet
+                match_text = ""
+                if query.lower() in desc.lower():
+                    match_text = desc[:100] + "..."
+                elif query.lower() in text.lower():
+                    match_text = text[:100] + "..."
+                else:
+                    match_text = (desc or text)[:100] + "..."
+                
+                # Highlight the query
+                match_display = Text(match_text)
+                for word in query.split():
+                    match_display.highlight_words([word], style="bold underline")
+                
+                table.add_row(
+                    str(r["id"]),
+                    r["filename"],
+                    time_str,
+                    score_str,
+                    match_display
+                )
+            
+            console.print(table)
+            console.print(f"\nFound {len(results)} results")
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Search failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def cleanup(
+    ctx: typer.Context,
+    days: int = typer.Option(
+        30,
+        "--days", "-d",
+        help="Delete screenshots older than this many days"
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force", "-f",
+        help="Skip confirmation prompt"
+    )
+):
+    """
+    Clean up old screenshots.
+    
+    Removes screenshots older than specified days from history and storage.
+    
+    EXAMPLES:
+      mcp-screenshot cleanup                # Delete screenshots older than 30 days
+      mcp-screenshot cleanup --days 7       # Delete screenshots older than 7 days
+      mcp-screenshot cleanup --days 7 -f    # Skip confirmation
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        history = get_history()
+        
+        # Get count of screenshots to delete
+        stats = history.get_stats()
+        total = stats["total_screenshots"]
+        
+        if not force and not json_output:
+            confirm = typer.confirm(
+                f"Delete screenshots older than {days} days? This may affect up to {total} screenshots."
+            )
+            if not confirm:
+                print_info("Cleanup cancelled")
+                return
+        
+        count = history.cleanup_old_screenshots(days=days)
+        
+        if json_output:
+            print_json({
+                "deleted": count,
+                "days": days
+            })
+        else:
+            print_success(f"Deleted {count} screenshots older than {days} days")
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Cleanup failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def similar(ctx: typer.Context,
+               image: str = typer.Argument(
+                   ...,
+                   help="Path to image to find similar screenshots",
+                   callback=validate_file_exists
+               ),
+               threshold: float = typer.Option(
+                   0.8,
+                   "--threshold", "-t",
+                   help="Similarity threshold (0.0-1.0, higher requires more similarity)"
+               ),
+               limit: int = typer.Option(
+                   10,
+                   "--limit", "-l",
+                   help="Maximum number of results"
+               ),
+               region: Optional[str] = typer.Option(
+                   None,
+                   "--region", "-r",
+                   help="Filter by screen region"
+               )):
+    """
+    Find visually similar screenshots using perceptual hashing.
+    
+    Uses perceptual hashing to find images that look similar, regardless of minor
+    variations in color, scaling, or cropping.
+    
+    EXAMPLES:
+      mcp-screenshot similar image.jpg                # Find similar images
+      mcp-screenshot similar image.jpg --threshold 0.9  # Higher similarity
+      mcp-screenshot similar logo.png --limit 5      # Only top 5 matches
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        history = get_history()
+        results = history.find_similar_images(
+            image_path=image,
+            threshold=threshold,
+            limit=limit,
+            region=region
+        )
+        
+        if json_output:
+            print_json({
+                "query_image": image,
+                "threshold": threshold,
+                "results": [
+                    {
+                        "id": r["id"],
+                        "filename": r["filename"],
+                        "storage_path": r["storage_path"],
+                        "similarity": r["similarity"],
+                        "description": r.get("description", "")
+                    }
+                    for r in results
+                ]
+            })
+        else:
+            from rich.table import Table
+            
+            table = Table(title=f"Similar Images to {os.path.basename(image)}")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Filename", style="magenta")
+            table.add_column("Similarity", style="green")
+            table.add_column("Description", style="yellow")
+            
+            for r in results:
+                similarity_str = f"{r['similarity']:.2%}"
+                desc = r.get("description", "")[:50] + "..." if r.get("description") else ""
+                
+                table.add_row(
+                    str(r["id"]),
+                    r["filename"],
+                    similarity_str,
+                    desc
+                )
+            
+            console.print(table)
+            console.print(f"\nFound {len(results)} similar images")
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Similar image search failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def combined(ctx: typer.Context,
+                 text_query: Optional[str] = typer.Option(
+                     None,
+                     "--text", "-t",
+                     help="Text to search for"
+                 ),
+                 image: Optional[str] = typer.Option(
+                     None,
+                     "--image", "-i",
+                     help="Image to find similar screenshots",
+                     callback=validate_file_exists
+                 ),
+                 text_weight: float = typer.Option(
+                     1.0,
+                     "--text-weight", "-tw",
+                     help="Weight for text search (any positive number)"
+                 ),
+                 image_weight: float = typer.Option(
+                     1.0,
+                     "--image-weight", "-iw",
+                     help="Weight for image similarity (any positive number)"
+                 ),
+                 limit: int = typer.Option(
+                     10,
+                     "--limit", "-l",
+                     help="Maximum number of results"
+                 ),
+                 region: Optional[str] = typer.Option(
+                     None,
+                     "--region", "-r",
+                     help="Filter by screen region"
+                 )):
+    """
+    Search by text content and/or visual similarity.
+    
+    Performs a flexible search using BM25 text ranking and/or
+    perceptual image hashing to find the most relevant screenshots.
+    At least one of --text or --image must be provided.
+    Weights are automatically normalized, so any positive numbers can be used.
+    
+    EXAMPLES:
+      # Search by both text and image (equal weights)
+      mcp-screenshot combined --text "login form" --image login.jpg
+      
+      # Text-only search
+      mcp-screenshot combined --text "error message"
+      
+      # Image-only search
+      mcp-screenshot combined --image reference.jpg
+      
+      # Adjust weights (70% text, 30% image)
+      mcp-screenshot combined --text "error" --image error.jpg --text-weight 7 --image-weight 3
+      
+      # For agents (get JSON output)
+      mcp-screenshot --json combined --text "button" --image button.png
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        # Verify at least one search parameter
+        if text_query is None and image is None:
+            raise typer.BadParameter("At least one of --text or --image must be provided")
+            
+        # Verify weights for each modality
+        if text_query is not None and text_weight <= 0:
+            raise typer.BadParameter("Text weight must be positive when using text search")
+            
+        if image is not None and image_weight <= 0:
+            raise typer.BadParameter("Image weight must be positive when using image search")
+        
+        history = get_history()
+        results = history.combined_search(
+            text_query=text_query,
+            image_path=image,
+            text_weight=text_weight,
+            image_weight=image_weight,
+            limit=limit,
+            region=region
+        )
+        
+        if json_output:
+            print_json({
+                "text_query": text_query,
+                "image_query": image,
+                "text_weight": text_weight,
+                "image_weight": image_weight,
+                "results": [
+                    {
+                        "id": r["id"],
+                        "filename": r["filename"],
+                        "storage_path": r["storage_path"],
+                        "combined_score": r["combined_score"],
+                        "text_score": r["text_score"],
+                        "image_score": r["image_score"],
+                        "description": r.get("description", "")
+                    }
+                    for r in results
+                ]
+            })
+        else:
+            from rich.table import Table
+            
+            table = Table(title=f"Combined Search Results for '{text_query}' + {os.path.basename(image)}")
+            table.add_column("ID", style="cyan", no_wrap=True)
+            table.add_column("Filename", style="magenta")
+            table.add_column("Text", style="green")
+            table.add_column("Image", style="blue")
+            table.add_column("Combined", style="yellow")
+            table.add_column("Description", style="white")
+            
+            for r in results:
+                text_score = f"{r['text_score']:.2f}"
+                image_score = f"{r['image_score']:.2f}"
+                combined_score = f"{r['combined_score']:.2f}"
+                desc = r.get("description", "")[:50] + "..." if r.get("description") else ""
+                
+                table.add_row(
+                    str(r["id"]),
+                    r["filename"],
+                    text_score,
+                    image_score,
+                    combined_score,
+                    desc
+                )
+            
+            console.print(table)
+            console.print(f"\nFound {len(results)} matching screenshots")
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Combined search failed: {str(e)}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def stats(ctx: typer.Context):
+    """
+    Show screenshot history statistics.
+    
+    Displays total count, storage usage, and search history.
+    """
+    json_output = ctx.obj.get("json_output", False)
+    
+    try:
+        history = get_history()
+        stats = history.get_stats()
+        
+        if json_output:
+            print_json(stats)
+        else:
+            from rich.panel import Panel
+            from rich.table import Table
+            
+            # Main stats
+            main_stats = Table.grid(padding=1)
+            main_stats.add_column()
+            main_stats.add_column()
+            
+            main_stats.add_row("Total Screenshots:", str(stats["total_screenshots"]))
+            main_stats.add_row("Total Size:", f"{stats['total_size_mb']} MB")
+            
+            console.print(Panel(main_stats, title="Screenshot Statistics", border_style="cyan"))
+            
+            # By region
+            if stats["by_region"]:
+                region_table = Table(title="Screenshots by Region")
+                region_table.add_column("Region", style="yellow")
+                region_table.add_column("Count", style="green")
+                
+                for region, count in stats["by_region"].items():
+                    region_table.add_row(region or "full", str(count))
+                
+                console.print(region_table)
+            
+            # Recent searches
+            if stats["recent_searches"]:
+                search_table = Table(title="Recent Searches")
+                search_table.add_column("Query", style="cyan")
+                search_table.add_column("Results", style="magenta")
+                search_table.add_column("Time", style="green")
+                
+                for search in stats["recent_searches"]:
+                    search_table.add_row(
+                        search["query"],
+                        str(search["results"]),
+                        search["timestamp"]
+                    )
+                
+                console.print(search_table)
+    
+    except Exception as e:
+        error_result = {"error": str(e)}
+        if json_output:
+            print_json(error_result)
+        else:
+            print_error(f"Stats retrieval failed: {str(e)}")
+        raise typer.Exit(code=1)
+
 
 
 if __name__ == "__main__":

@@ -2,15 +2,15 @@
 name = "mcp-screenshot"
 version = "0.1.0"
 description = "MCP Screenshot tool for AI-powered image analysis and verification"
-authors = [{name = "Graham Anderson", email = "graham@grahama.co"}]"
+authors = [{name = "Graham Anderson", email = "graham@grahama.co"}]
 dependencies = [
     "fastmcp>=0.1.0",
     "mss>=9.0.1",
     "Pillow>=10.0.0",
     "litellm>=1.41.0",
     "redis>=5.0.0",
-    "typer[all]"
-    "claude-test-reporter @ git+https://github.com/grahama1970/claude-test-reporter.git@main",>=0.9.0",
+    "typer[all]>=0.9.0",
+    "claude-test-reporter @ git+https://github.com/grahama1970/claude-test-reporter.git@main",
     "rich>=13.0.0",
     "loguru>=0.7.2",
     "pyautogui>=0.9.53",
@@ -19,18 +19,19 @@ dependencies = [
     "google-auth>=2.0.0",
     "google-auth-oauthlib>=1.0.0",
     "google-cloud-aiplatform>=1.0.0",
+    "imagehash>=4.3.0",
 ]
 
-[project.scripts]"
+[project.scripts]
 mcp-screenshot = "mcp_screenshot.cli.main:app"
 
-[project.entry-points.mcp]"
+[project.entry-points.mcp]
 screenshot = "mcp_screenshot.mcp.server:main"
 
-[build-system]"
-requires = ["setuptools>=45", "wheel"]"
+[build-system]
+requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]"
-packages = ["mcp_screenshot"]"
+[tool.setuptools]
+packages = ["mcp_screenshot"]
 package-dir = {"" = "src"}

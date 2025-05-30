@@ -810,6 +810,10 @@ class ScreenshotHistory:
             raise
 
 
+# Global instance for singleton pattern
+_history_instance = None
+
+
 def get_history() -> ScreenshotHistory:
     """Get or create singleton history instance."""
     global _history_instance

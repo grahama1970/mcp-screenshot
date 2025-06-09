@@ -1,3 +1,23 @@
+"""
+Module: server.py
+Description: Functions for server operations
+
+External Dependencies:
+- asyncio: [Documentation URL]
+- mcp: [Documentation URL]
+- loguru: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 MCP Server for Screenshot Tool
@@ -77,6 +97,14 @@ async def main():
     except Exception as e:
         logger.error(f"Server error: {str(e)}", exc_info=True)
         sys.exit(1)
+
+
+
+async def validate():
+    """Validate server configuration"""
+    result = await capabilities()
+    assert "mcp-screenshot" in result.lower()
+    print(" Server validation passed")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,23 @@
+"""
+Module: compare.py
+Description: Functions for compare operations
+
+External Dependencies:
+- numpy: https://numpy.org/doc/
+- PIL: [Documentation URL]
+- loguru: [Documentation URL]
+- tempfile: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Screenshot Comparison Module
@@ -240,5 +260,5 @@ if __name__ == "__main__":
     if 'diff_image' in result and os.path.exists(result['diff_image']):
         os.unlink(result['diff_image'])
     
-    print("✅ All comparison tests passed!")
+    print(" All comparison tests passed!")
     sys.exit(0)

@@ -1,3 +1,25 @@
+"""
+Module: description.py
+Description: Functions for description operations
+
+External Dependencies:
+- base64: [Documentation URL]
+- loguru: [Documentation URL]
+- PIL: [Documentation URL]
+- litellm: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+- tempfile: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 AI-powered Image Description
@@ -296,7 +318,7 @@ if __name__ == "__main__":
         logger.info("Test 1: Image preparation...")
         image_b64 = prepare_image_for_multimodal(test_image_path)
         if len(image_b64) > 0:
-            logger.success("✅ Image preparation successful")
+            logger.success(" Image preparation successful")
         else:
             raise ValueError("Empty base64 string")
     except Exception as e:
@@ -312,7 +334,7 @@ if __name__ == "__main__":
         )
         
         if "error" not in result:
-            logger.success("✅ Image description successful")
+            logger.success(" Image description successful")
             logger.info(f"Description: {result.get('description', '')[:100]}...")
             logger.info(f"Confidence: {result.get('confidence', 'N/A')}")
         else:
@@ -331,7 +353,7 @@ if __name__ == "__main__":
         )
         
         if "error" not in result2:
-            logger.success("✅ Second description successful (should use cache)")
+            logger.success(" Second description successful (should use cache)")
         else:
             raise ValueError(result2["error"])
     except Exception as e:
@@ -348,10 +370,10 @@ if __name__ == "__main__":
     # Report results
     logger.info("\n=== Validation Summary ===")
     if not validation_errors:
-        logger.success("✅ All tests passed!")
+        logger.success(" All tests passed!")
         sys.exit(0)
     else:
-        logger.error(f"❌ {len(validation_errors)} test(s) failed:")
+        logger.error(f" {len(validation_errors)} test(s) failed:")
         for error in validation_errors:
             logger.error(f"  - {error}")
         sys.exit(1)

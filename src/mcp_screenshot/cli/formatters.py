@@ -1,3 +1,20 @@
+"""
+Module: formatters.py
+Description: Functions for formatters operations
+
+External Dependencies:
+- rich: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Output Formatters for CLI
@@ -100,12 +117,12 @@ def print_verification_result(result: Dict[str, Any]) -> None:
     if result.get("features_found"):
         content.append("\n[green]Features Found:[/green]")
         for feature in result["features_found"]:
-            content.append(f"  ✓ {feature}")
+            content.append(f"   {feature}")
     
     if result.get("missing_features"):
         content.append("\n[red]Missing Features:[/red]")
         for feature in result["missing_features"]:
-            content.append(f"  ✗ {feature}")
+            content.append(f"   {feature}")
     
     # Description
     if "description" in result:
@@ -222,5 +239,5 @@ if __name__ == "__main__":
     print_success("This is a success message")
     print_warning("This is a warning message")
     
-    print_info("\n✅ All formatters tested successfully")
+    print_info("\n All formatters tested successfully")
     sys.exit(0)

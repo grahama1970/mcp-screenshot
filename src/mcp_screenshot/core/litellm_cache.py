@@ -1,8 +1,27 @@
+"""
+Module: litellm_cache.py
+Description: Functions for litellm cache operations
+
+External Dependencies:
+- redis: https://redis-py.readthedocs.io/
+- litellm: [Documentation URL]
+- loguru: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 LiteLLM Cache initialization for MCP Screenshot Tool
 
-This module sets up LiteLLM's built-in caching mechanism using Redis or 
+This module sets up LiteLLM's built-in caching mechanism using Redis or '
 falling back to in-memory caching if Redis is unavailable.
 
 This module is part of the Core Layer.
@@ -70,7 +89,7 @@ def initialize_litellm_cache(
         
         # Enable caching
         litellm.enable_cache()
-        logger.info(f"✅ Redis caching enabled at {redis_host}:{redis_port}")
+        logger.info(f" Redis caching enabled at {redis_host}:{redis_port}")
         
         # Test cache with a simple operation
         try:

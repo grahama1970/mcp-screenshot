@@ -1,3 +1,24 @@
+"""
+Module: chunked_capture.py
+Description: Functions for chunked capture operations
+
+External Dependencies:
+- asyncio: [Documentation URL]
+- playwright: [Documentation URL]
+- loguru: [Documentation URL]
+- PIL: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Chunked screenshot capture for very tall pages.
@@ -261,7 +282,7 @@ if __name__ == "__main__":
     )
     
     if result.get("success"):
-        print(f"✓ Captured {len(result['chunks'])} chunks")
+        print(f" Captured {len(result['chunks'])} chunks")
         print(f"  Total page height: {result['total_height']}px")
     else:
-        print(f"✗ Capture failed: {result.get('error')}")
+        print(f" Capture failed: {result.get('error')}")

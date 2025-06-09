@@ -1,3 +1,24 @@
+"""
+Module: main.py
+Description: Implementation of main functionality
+
+External Dependencies:
+- typer: [Documentation URL]
+- rich: [Documentation URL]
+- loguru: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+- asyncio: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Main CLI Application for MCP Screenshot Tool
@@ -46,6 +67,7 @@ from mcp_screenshot.cli.validators import (
     validate_zoom_factor
 )
 from mcp_screenshot.core.utils import parse_coordinates
+from mcp_screenshot.cli.granger_slash_mcp_mixin import add_slash_mcp_commands
 
 # Initialize Typer app
 app = typer.Typer(
@@ -67,6 +89,9 @@ FOR HELP: mcp-screenshot quick-ref               # Agent cheat sheet
 
 # Console for rich output
 console = Console()
+
+# Add slash command and MCP generation
+add_slash_mcp_commands(app, project_name='mcp-screenshot')
 
 
 class GlobalContext:

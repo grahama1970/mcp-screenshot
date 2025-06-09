@@ -1,3 +1,26 @@
+"""
+Module: capture.py
+Description: Functions for capture operations
+
+External Dependencies:
+- base64: [Documentation URL]
+- mss: [Documentation URL]
+- PIL: [Documentation URL]
+- loguru: [Documentation URL]
+- selenium: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+- shutil: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Screenshot Capture Module
@@ -531,11 +554,11 @@ if __name__ == "__main__":
     
     # Final validation result
     if all_validation_failures:
-        print(f"❌ VALIDATION FAILED - {len(all_validation_failures)} of {total_tests} tests failed:")
+        print(f" VALIDATION FAILED - {len(all_validation_failures)} of {total_tests} tests failed:")
         for failure in all_validation_failures:
             print(f"  - {failure}")
         sys.exit(1)
     else:
-        print(f"✅ VALIDATION PASSED - All {total_tests} tests produced expected results")
+        print(f" VALIDATION PASSED - All {total_tests} tests produced expected results")
         print("Screenshot capture functions are validated and ready for use")
         sys.exit(0)

@@ -1,3 +1,24 @@
+"""
+Module: chunked_capture_fixed.py
+Description: Functions for chunked capture fixed operations
+
+External Dependencies:
+- asyncio: [Documentation URL]
+- playwright: [Documentation URL]
+- loguru: [Documentation URL]
+- PIL: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Fixed chunked screenshot capture for very tall pages.

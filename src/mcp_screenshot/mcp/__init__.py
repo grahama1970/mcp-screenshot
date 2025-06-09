@@ -1,5 +1,7 @@
 """
 MCP Layer for Screenshot Tool
+Module: __init__.py
+Description: Package initialization and exports
 
 This package provides the Model Context Protocol integration,
 exposing the screenshot functionality to AI agents through MCP.

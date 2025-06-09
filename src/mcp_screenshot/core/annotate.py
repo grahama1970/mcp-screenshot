@@ -1,4 +1,6 @@
 """Screenshot annotation functionality"""
+Module: annotate.py
+Description: Functions for annotate operations
 
 from typing import Dict, Any, List, Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont

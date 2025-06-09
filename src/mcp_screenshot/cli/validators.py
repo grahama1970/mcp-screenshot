@@ -1,3 +1,23 @@
+"""
+Module: validators.py
+Description: Functions for validators operations
+
+External Dependencies:
+- typer: [Documentation URL]
+- loguru: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+- tempfile: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Input Validators for CLI
@@ -121,7 +141,7 @@ def validate_file_exists(ctx: typer.Context, value: Optional[str]) -> Optional[s
         str: Validated file path
         
     Raises:
-        typer.BadParameter: If file doesn't exist
+        typer.BadParameter: If file doesn't exist'
     """
     if value is None:
         return None
@@ -377,11 +397,11 @@ if __name__ == "__main__":
     
     # Final validation result
     if all_validation_failures:
-        print(f"❌ VALIDATION FAILED - {len(all_validation_failures)} of {total_tests} tests failed:")
+        print(f" VALIDATION FAILED - {len(all_validation_failures)} of {total_tests} tests failed:")
         for failure in all_validation_failures:
             print(f"  - {failure}")
         sys.exit(1)
     else:
-        print(f"✅ VALIDATION PASSED - All {total_tests} tests produced expected results")
+        print(f" VALIDATION PASSED - All {total_tests} tests produced expected results")
         print("Validators are ready for use")
         sys.exit(0)

@@ -1,3 +1,22 @@
+"""
+Module: image_similarity.py
+
+External Dependencies:
+- imagehash: [Documentation URL]
+- PIL: [Documentation URL]
+- numpy: https://numpy.org/doc/
+- loguru: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Image Similarity Module using perceptual hashing

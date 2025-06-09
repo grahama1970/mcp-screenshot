@@ -1,3 +1,24 @@
+"""
+Module: playwright_capture.py
+Description: Functions for playwright capture operations
+
+External Dependencies:
+- base64: [Documentation URL]
+- playwright: [Documentation URL]
+- loguru: [Documentation URL]
+- PIL: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Playwright-based screenshot capture with full-page support.

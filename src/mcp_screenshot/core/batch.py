@@ -1,3 +1,24 @@
+"""
+Module: batch.py
+
+External Dependencies:
+- asyncio: [Documentation URL]
+- concurrent: [Documentation URL]
+- loguru: [Documentation URL]
+- tqdm: [Documentation URL]
+- litellm: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Batch Processing Module
@@ -348,12 +369,12 @@ if __name__ == "__main__":
         
         results = await batch_capture(targets, max_concurrent=2)
         assert len(results) == 2
-        print(f"✓ Batch capture test passed: {len(results)} results")
+        print(f" Batch capture test passed: {len(results)} results")
         
         # Test batch description
         if results[0].get("file"):
             images = [r["file"] for r in results if "file" in r]
             desc_results = await batch_describe(images, max_concurrent=2)
-            print(f"✓ Batch description test passed: {len(desc_results)} results")
+            print(f" Batch description test passed: {len(desc_results)} results")
     
     asyncio.run(test_batch_processing())

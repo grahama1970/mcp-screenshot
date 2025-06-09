@@ -1,3 +1,23 @@
+"""
+Module: history.py
+
+External Dependencies:
+- sqlite3: [Documentation URL]
+- shutil: [Documentation URL]
+- loguru: [Documentation URL]
+- PIL: [Documentation URL]
+- : [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 Screenshot History and Search Module

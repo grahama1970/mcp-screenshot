@@ -1,3 +1,22 @@
+"""
+Module: tools.py
+Description: Functions for tools operations
+
+External Dependencies:
+- mcp: [Documentation URL]
+- loguru: [Documentation URL]
+- mcp_screenshot: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 MCP Tool Definitions

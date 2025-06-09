@@ -1,3 +1,20 @@
+"""
+Module: prompts.py
+Description: Functions for prompts operations
+
+External Dependencies:
+- fastmcp: [Documentation URL]
+
+Sample Input:
+>>> # Add specific examples based on module functionality
+
+Expected Output:
+>>> # Add expected output examples
+
+Example Usage:
+>>> # Add usage examples
+"""
+
 #!/usr/bin/env python3
 """
 MCP Prompt Templates

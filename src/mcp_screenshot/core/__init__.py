@@ -109,10 +109,57 @@ screenshot_tool = ScreenshotTool()
 capture_screenshot = screenshot_tool.capture
 capture_screenshot_base64 = screenshot_tool.capture_base64
 
+
+
+def describe_image_content(image_path: Union[str, Path]) -> str:
+    """Describe the content of an image.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Description of the image content
+    """
+    # This would typically use an AI model to describe the image
+    # For now, return a placeholder
+    return f"Image at {image_path} (AI description not implemented)"
+
+
+def analyze_screenshot(screenshot_data: bytes) -> Dict[str, Any]:
+    """Analyze a screenshot.
+    
+    Args:
+        screenshot_data: Screenshot data as bytes
+        
+    Returns:
+        Analysis results
+    """
+    return {
+        "size": len(screenshot_data),
+        "format": "PNG",
+        "analysis": "Screenshot analysis not implemented"
+    }
+
+
+# Legacy compatibility functions
+def get_screenshot_tool():
+    """Get the default screenshot tool instance."""
+    return screenshot_tool
+
+
+def capture_region(x: int, y: int, width: int, height: int) -> bytes:
+    """Capture a specific region of the screen."""
+    return screenshot_tool.capture((x, y, width, height))
+
+
 __all__ = [
     "ScreenshotTool",
     "ScreenshotProcessor", 
     "screenshot_tool",
     "capture_screenshot",
     "capture_screenshot_base64",
+    "describe_image_content",
+    "analyze_screenshot",
+    "get_screenshot_tool",
+    "capture_region",
 ]
